@@ -18,12 +18,12 @@ button:disabled{opacity:.5;cursor:default}
 </style></head><body>
 <div class="box">
   <h1>📺 Second Screen</h1>
-  <p class="sub">Send a window from this computer to your wall display. Enter the 6-digit code shown on the display, then choose what to share.</p>
+  <p class="sub">Put a window from this computer onto your wall display and keep working here. Enter the 6-digit code shown on the display, then choose what to share.</p>
   <div class="code"><input id="code" inputmode="numeric" maxlength="6" placeholder="······" autocomplete="off"></div>
   <button id="go">Choose what to share</button>
   <button id="stop">Stop sharing</button>
   <div class="st" id="st"></div>
-  <div class="tip">Share a single <b>window</b> (your meeting, a document, a dashboard) to use the display as a dedicated side screen — or the whole screen to mirror everything. Video goes straight from this computer to the display over your network; nothing is stored or uploaded. Works best on the same Wi-Fi.</div>
+  <div class="tip">In the share dialog, click the <b>Window</b> tab and pick one window — your meeting, a document — <b>not Entire Screen</b>. That window appears on the display while your laptop screen stays yours, so it works like a separate screen for that app. Keep the window open (don&rsquo;t minimize it). Video goes straight from this computer to the display over your network; nothing is stored or uploaded. Same Wi-Fi works best; a VPN may block it.</div>
 </div>
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script>
@@ -37,7 +37,7 @@ stop.onclick=function(){ end(); say('Stopped.'); };
 go.onclick=async function(){
   var c=(code.value||'').replace(/\D/g,''); if(c.length!==6){ say('Enter the 6-digit code from the display.','err'); return; }
   go.disabled=true;
-  try{ stream=await navigator.mediaDevices.getDisplayMedia({video:{frameRate:{ideal:30},width:{ideal:1920},height:{ideal:1080}},audio:false}); }
+  try{ stream=await navigator.mediaDevices.getDisplayMedia({video:{displaySurface:'window',frameRate:{ideal:30},width:{ideal:1920},height:{ideal:1080}},audio:false}); }
   catch(e){ go.disabled=false; say(e&&e.name==='NotAllowedError'?'Sharing was cancelled.':'Could not start screen share: '+(e&&e.name||e),'err'); return; }
   stream.getVideoTracks()[0].addEventListener('ended',function(){ end(); say('Sharing ended.'); });
   try{ stream.getVideoTracks()[0].contentHint='detail'; }catch(e){}
