@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Second Screen</title>
+<style>
+:root{--bg:#0b1120;--card:#141d33;--line:#24314f;--ink:#eef3fb;--ink2:#9db0d0;--acc:#ff8a5c;--ok:#2bd4a4}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;display:grid;place-items:center;background:radial-gradient(900px 600px at 80% -10%,#1d2c52,transparent 60%),var(--bg);color:var(--ink);font:16px/1.5 -apple-system,"Segoe UI",Roboto,sans-serif;padding:24px}
+.box{width:min(480px,94vw);background:var(--card);border:1px solid var(--line);border-radius:24px;padding:34px;box-shadow:0 20px 60px -20px #000a}
+h1{margin:0 0 6px;font-size:26px}p.sub{margin:0 0 24px;color:var(--ink2)}
+.code{display:flex;gap:10px;margin-bottom:18px}
+.code input{width:100%;font:700 40px/1 ui-monospace,Menlo,Consolas,monospace;letter-spacing:14px;text-align:center;padding:18px 10px;border-radius:16px;border:1px solid var(--line);background:#0e1628;color:var(--ink)}
+button{width:100%;padding:17px;border:0;border-radius:16px;font-size:17px;font-weight:700;cursor:pointer;background:linear-gradient(135deg,#d9663a,var(--acc));color:#1a0d06}
+button:disabled{opacity:.5;cursor:default}
+#stop{background:#2a3655;color:var(--ink);display:none;margin-top:10px}
+.st{margin-top:16px;font-size:14.5px;color:var(--ink2);min-height:22px}.st.ok{color:var(--ok);font-weight:600}.st.err{color:#ff7b7b}
+.tip{margin-top:22px;font-size:13px;color:#6b7ea3;border-top:1px solid var(--line);padding-top:16px;line-height:1.6}
+.tip b{color:var(--ink2)}
+</style></head><body>
+<div class="box">
+  <h1>📺 Second Screen</h1>
+  <p class="sub">Send a window from this computer to your wall display. Enter the 6-digit code shown on the display, then choose what to share.</p>
+  <div class="code"><input id="code" inputmode="numeric" maxlength="6" placeholder="······" autocomplete="off"></div>
+  <button id="go">Choose what to share</button>
+  <button id="stop">Stop sharing</button>
+  <div class="st" id="st"></div>
+  <div class="tip">Share a single <b>window</b> (your meeting, a document, a dashboard) to use the display as a dedicated side screen — or the whole screen to mirror everything. Video goes straight from this computer to the display over your network; nothing is stored or uploaded. Works best on the same Wi-Fi.</div>
+</div>
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script>
+var code=document.getElementById('code'), go=document.getElementById('go'), stop=document.getElementById('stop'), st=document.getElementById('st');
+var peer=null, call=null, stream=null;
+var h=(location.hash||'').match(/(\d{6})/); if(h) code.value=h[1];
+function say(t,c){ st.textContent=t; st.className='st '+(c||''); }
+function end(){ try{call&&call.close();}catch(e){} try{peer&&peer.destroy();}catch(e){} if(stream) stream.getTracks().forEach(function(t){t.stop();});
+  call=peer=stream=null; go.style.display='block'; stop.style.display='none'; go.disabled=false; }
+stop.onclick=function(){ end(); say('Stopped.'); };
+go.onclick=async function(){
+  var c=(code.value||'').replace(/\D/g,''); if(c.length!==6){ say('Enter the 6-digit code from the display.','err'); return; }
+  go.disabled=true;
+  try{ stream=await navigator.mediaDevices.getDisplayMedia({video:{frameRate:{ideal:30},width:{ideal:1920},height:{ideal:1080}},audio:false}); }
+  catch(e){ go.disabled=false; say(e&&e.name==='NotAllowedError'?'Sharing was cancelled.':'Could not start screen share: '+(e&&e.name||e),'err'); return; }
+  stream.getVideoTracks()[0].addEventListener('ended',function(){ end(); say('Sharing ended.'); });
+  try{ stream.getVideoTracks()[0].contentHint='detail'; }catch(e){}
+  say('Connecting to display '+c+'…');
+  peer=new Peer({config:{iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l.google.com:19302'}]}});
+  peer.on('error',function(e){ say(e.type==='peer-unavailable'?'No display is waiting with that code — open the Second Screen page on the display first.':'Connection error: '+e.type,'err'); end(); });
+  peer.on('open',function(){
+    call=peer.call('portalhub-cast-'+c, stream);
+    var pc=call.peerConnection; if(pc) pc.addEventListener('connectionstatechange',function(){
+      if(pc.connectionState==='connected'){ say('● Live on your display','ok'); go.style.display='none'; stop.style.display='block'; }
+      if(pc.connectionState==='failed'){ say('Could not reach the display on this network (a VPN or firewall may be blocking the direct connection).','err'); end(); }
+    });
+    call.on('close',function(){ say('The display closed the connection.'); end(); });
+  });
+};
+</script></body></html>
